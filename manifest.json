@@ -1,0 +1,9 @@
+{
+  "name": "バンブー麻雀クイズ",
+  "short_name": "バンブー麻雀",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#0f2a1d",
+  "theme_color": "#143d2b",
+  "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml" }]
+}

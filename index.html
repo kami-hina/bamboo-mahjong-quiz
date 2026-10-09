@@ -1,0 +1,421 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#143d2b">
+<title>バンブー麻雀クイズ</title>
+<meta name="description" content="索子だけの手牌を見て、何向聴か・待ち牌（または受け入れ牌）を答えるクイズ。全パターンを出題。">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon.svg">
+<style>
+  :root {
+    --bg: #0f2a1d; --panel: #16382a; --panel2: #1e4635; --line: #2c5d47;
+    --fg: #ecf3ee; --muted: #a3bfae; --accent: #f2c14e; --accent-fg: #1a1a1a;
+    --ok: #5ccd8f; --ng: #ea7461; --sel: #2f7d57;
+    --radius: 14px;
+  }
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) { --bg: #f0f5f1; --panel: #ffffff; --panel2: #e6efe8; --line: #cfdfd4; --fg: #15301f; --muted: #5b7564; --sel: #bfe6cf; }
+  }
+  :root[data-theme="light"] { --bg: #f0f5f1; --panel: #ffffff; --panel2: #e6efe8; --line: #cfdfd4; --fg: #15301f; --muted: #5b7564; --sel: #bfe6cf; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; background: var(--bg); color: var(--fg); font-family: -apple-system, "Hiragino Sans", "Noto Sans JP", system-ui, sans-serif; font-size: 16px; line-height: 1.55; }
+  body { padding-bottom: env(safe-area-inset-bottom); }
+  header { position: sticky; top: 0; z-index: 10; background: color-mix(in srgb, var(--bg) 92%, transparent); backdrop-filter: blur(8px); border-bottom: 1px solid var(--line); padding: 10px 16px; display: flex; align-items: center; gap: 8px; }
+  header h1 { font-size: 17px; margin: 0; flex: 1; font-weight: 700; letter-spacing: .02em; }
+  .tabs { display: flex; gap: 4px; }
+  .tabs button { background: none; border: 1px solid var(--line); color: var(--fg); border-radius: 999px; padding: 6px 12px; font-size: 13px; }
+  .tabs button.on { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); font-weight: 700; }
+  main { max-width: 640px; margin: 0 auto; padding: 16px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; margin-bottom: 14px; }
+  .card h2 { font-size: 14px; margin: 0 0 10px; color: var(--muted); font-weight: 600; }
+  .seg { display: flex; flex-wrap: wrap; gap: 8px; }
+  .seg button { flex: 1 1 0; min-width: 70px; text-align: center; padding: 10px 8px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel2); color: var(--fg); font-size: 14px; }
+  .seg button.on { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); font-weight: 700; }
+  .seg button:disabled { opacity: .4; }
+  .field { margin-bottom: 12px; }
+  .field label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+  .btn { display: block; width: 100%; padding: 14px; border: none; border-radius: 12px; background: var(--accent); color: var(--accent-fg); font-size: 17px; font-weight: 700; margin-top: 10px; }
+  .btn.secondary { background: var(--panel2); color: var(--fg); border: 1px solid var(--line); font-weight: 600; }
+  .btn:disabled { opacity: .45; }
+  .row { display: flex; gap: 10px; }
+  .row .btn { margin-top: 0; }
+  .meta { color: var(--muted); font-size: 13px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; gap: 8px; }
+  .hand { display: flex; gap: 2px; justify-content: center; margin: 8px 0 12px; }
+  .hand .tw { width: calc((100% - 24px) / 13); max-width: 44px; }
+  .hand.n10 .tw { width: calc((100% - 18px) / 10); max-width: 50px; }
+  .hand.n7 .tw, .hand.n4 .tw { width: 48px; }
+  .tw { display: inline-block; flex: 0 0 auto; }
+  img.tile { display: block; width: 100%; height: auto; background: #fff; padding: 5%; border-radius: 10%; box-sizing: border-box; filter: brightness(94%) saturate(85%); box-shadow: inset 0 0 2px rgba(0,0,0,.45), 0 1px 2px rgba(0,0,0,.3); }
+  .q { font-size: 15px; margin: 0 0 10px; }
+  .q b { color: var(--accent); }
+  .tilesel { display: grid; grid-template-columns: repeat(9, 1fr); gap: 4px; }
+  .tilesel button { background: var(--panel2); border: 2px solid var(--line); border-radius: 8px; padding: 3px; }
+  .tilesel button .tw { width: 100%; }
+  .tilesel button.on { border-color: var(--accent); background: var(--sel); }
+  .tilesel button:disabled { opacity: .35; }
+  .tilesel button .c { display: block; font-size: 11px; color: var(--muted); text-align: center; line-height: 1.2; margin-top: 2px; }
+  .result { border-radius: 12px; padding: 12px 14px; margin-top: 12px; }
+  .result.ok { background: rgba(92,205,143,.16); border: 1px solid var(--ok); }
+  .result.ng { background: rgba(234,116,97,.16); border: 1px solid var(--ng); }
+  .result h3 { margin: 0 0 6px; font-size: 18px; }
+  .result.ok h3 { color: var(--ok); } .result.ng h3 { color: var(--ng); }
+  .answer { font-size: 16px; margin: 4px 0; }
+  .answer b { font-size: 18px; }
+  .minis { display: inline-flex; gap: 1px; vertical-align: middle; }
+  .minis .tw { width: 26px; }
+  .wlist { list-style: none; padding: 0; margin: 8px 0 0; }
+  .wlist li { display: flex; align-items: center; gap: 8px; padding: 5px 0; border-top: 1px solid var(--line); font-size: 14px; }
+  .wlist li .tw { width: 30px; }
+  .wlist li .nm { flex: 1; }
+  .wlist li .tagx { font-size: 11px; color: var(--muted); }
+  .wlist li.miss { color: var(--ng); } .wlist li.extra { color: var(--ng); }
+  .blocks { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+  .block { background: var(--panel2); border-radius: 8px; padding: 4px 6px 2px; text-align: center; }
+  .block .minis .tw { width: 24px; }
+  .block small { display: block; font-size: 10px; color: var(--muted); }
+  .block.mentsu { outline: 1px solid var(--ok); } .block.pair { outline: 1px solid var(--accent); }
+  .hint { color: var(--muted); font-size: 13px; margin: 6px 0 0; }
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .stat { background: var(--panel2); border-radius: 10px; padding: 10px 6px; text-align: center; }
+  .stat b { display: block; font-size: 20px; line-height: 1.1; }
+  .stat span { font-size: 11px; color: var(--muted); }
+  .stat.ok b { color: var(--ok); } .stat.ng b { color: var(--ng); } .stat.new b { color: var(--accent); }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { padding: 6px 4px; border-bottom: 1px solid var(--line); text-align: right; }
+  th:first-child, td:first-child { text-align: left; }
+  th { color: var(--muted); font-weight: 600; font-size: 12px; }
+  .progress { height: 4px; background: var(--panel2); border-radius: 2px; overflow: hidden; margin: 6px 0 12px; }
+  .progress i { display: block; height: 100%; background: var(--accent); transition: width .2s; }
+  .empty { text-align: center; color: var(--muted); padding: 24px 10px; }
+  footer { text-align: center; color: var(--muted); font-size: 12px; padding: 10px 16px 24px; }
+  footer a { color: var(--muted); }
+  details summary { cursor: pointer; color: var(--muted); font-size: 13px; }
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+<header>
+  <h1>バンブー麻雀クイズ</h1>
+  <nav class="tabs">
+    <button data-tab="quiz" class="on">出題</button>
+    <button data-tab="stats">成績</button>
+    <button data-tab="calc">調べる</button>
+  </nav>
+</header>
+<main>
+
+<!-- ===== 出題 ===== -->
+<section id="tab-quiz">
+  <div class="card">
+    <details id="settings">
+      <summary id="settingsSummary">設定</summary>
+      <div style="margin-top:10px">
+        <div class="field"><label>手牌の枚数</label><div class="seg" id="segN"></div></div>
+        <div class="field"><label>向聴数で絞り込み</label><div class="seg" id="segS"></div></div>
+        <div class="field"><label>出題対象</label><div class="seg" id="segT">
+          <button data-v="new">未出題</button><button data-v="wrong">間違えた問題</button><button data-v="all">すべて</button>
+        </div></div>
+      </div>
+    </details>
+  </div>
+
+  <div class="card" id="qcard">
+    <div class="meta"><span id="qmeta"></span><span id="qno"></span></div>
+    <div class="progress"><i id="qprog" style="width:0%"></i></div>
+    <div id="qbody">
+      <div class="hand" id="hand"></div>
+      <p class="q">この手牌は<b>何向聴</b>？ テンパイなら<b>待ち牌</b>、テンパイでなければ<b>向聴数が進む牌（受け入れ）</b>をすべて選んでください。</p>
+      <div class="field"><label>向聴数</label><div class="seg" id="ansS"></div></div>
+      <div class="field"><label id="tileLabel">待ち牌／受け入れ牌（複数選択）</label><div class="tilesel" id="ansT"></div></div>
+      <button class="btn" id="btnAnswer">回答する</button>
+      <div id="resultBox"></div>
+      <button class="btn secondary hidden" id="btnNext">次の問題 →</button>
+    </div>
+    <div id="qempty" class="empty hidden"></div>
+  </div>
+</section>
+
+<!-- ===== 成績 ===== -->
+<section id="tab-stats" class="hidden">
+  <div class="card">
+    <h2 id="statsTitle">成績</h2>
+    <div class="stats" id="statsGrid"></div>
+    <div class="progress" style="margin-top:12px"><i id="statsProg" style="width:0%"></i></div>
+    <table id="statsTable"></table>
+    <p class="hint">成績はこの端末のブラウザ（localStorage）にだけ保存されます。</p>
+    <button class="btn secondary" id="btnReset">この枚数の成績をリセット</button>
+  </div>
+  <div class="card">
+    <h2>全パターンの内訳</h2>
+    <table id="allTable"></table>
+    <p class="hint">索子 1〜9（各 4 枚）から作れる手牌をすべて列挙し、向聴数と待ち／受け入れを事前計算しています。</p>
+  </div>
+</section>
+
+<!-- ===== 調べる ===== -->
+<section id="tab-calc" class="hidden">
+  <div class="card">
+    <h2>手牌を入力（牌をタップで追加、手牌をタップで削除）</h2>
+    <div class="tilesel" id="calcSel"></div>
+    <div class="hand" id="calcHand" style="min-height:40px"></div>
+    <div class="row"><button class="btn secondary" id="calcClear">クリア</button><button class="btn secondary" id="calcRandom">ランダム13枚</button></div>
+    <div id="calcOut"></div>
+  </div>
+</section>
+
+</main>
+<footer>
+  牌画像: <a href="https://github.com/FluffyStuff/riichi-mahjong-tiles" target="_blank" rel="noopener">FluffyStuff/riichi-mahjong-tiles</a>（CC0）<br>
+  <span id="verinfo"></span>
+</footer>
+
+<script src="mahjong.js"></script>
+<script src="data/hands.js"></script>
+<script>
+(function () {
+  'use strict';
+  const B = window.Bamboo;
+  const D = window.BAMBOO_DATA;
+  const $ = (s) => document.querySelector(s);
+  const SIZES = [13, 10, 7, 4];
+  const KEY = 'bamboo.v1.';
+
+  // ---------- 状態 ----------
+  const st = {
+    N: 13, filterS: 'all', target: 'new',
+    hands: null, vals: null, status: null, // status: 0 未出題 / 1 正解 / 2 不正解
+    cur: null, pickS: null, pickMask: 0, answered: false,
+  };
+  try {
+    const s = JSON.parse(localStorage.getItem(KEY + 'settings') || '{}');
+    if (SIZES.includes(s.N)) st.N = s.N;
+    if (s.filterS !== undefined) st.filterS = s.filterS;
+    if (s.target) st.target = s.target;
+  } catch (e) {}
+  function saveSettings() { try { localStorage.setItem(KEY + 'settings', JSON.stringify({ N: st.N, filterS: st.filterS, target: st.target })); } catch (e) {} }
+
+  function tileName(t) { return (t + 1) + '索'; }
+  function tileImg(t) { return '<span class="tw"><img class="tile" src="tiles/' + (t + 1) + 's.svg" alt="' + tileName(t) + '"></span>'; }
+  function minis(tiles) { return '<span class="minis">' + tiles.map(tileImg).join('') + '</span>'; }
+  function shantenName(s) { return s === -1 ? '和了' : s === 0 ? 'テンパイ' : s + '向聴'; }
+  function maskTiles(mask) { const a = []; for (let t = 0; t < 9; t++) if (mask & (1 << t)) a.push(t); return a; }
+  function maxShanten(N) { return Math.max(...Object.keys(D.sizes[N].shanten).map(Number)); }
+
+  // ---------- データ読み込み ----------
+  function loadSize(N) {
+    st.N = N;
+    const info = D.sizes[N];
+    st.hands = B.enumerate(N);
+    if (st.hands.length !== info.total) throw new Error('列挙数がデータと一致しません');
+    st.vals = new Uint16Array(info.total);
+    for (let i = 0; i < info.total; i++) { const d = B.decodeAt(info.str, i); st.vals[i] = (d.shanten << 9) | d.mask; }
+    st.status = new Uint8Array(info.total);
+    try {
+      const s = localStorage.getItem(KEY + 'status.' + N);
+      if (s && s.length === info.total) for (let i = 0; i < info.total; i++) st.status[i] = s.charCodeAt(i) - 48;
+    } catch (e) {}
+  }
+  function saveStatus() {
+    try { let s = ''; for (let i = 0; i < st.status.length; i++) s += st.status[i]; localStorage.setItem(KEY + 'status.' + st.N, s); } catch (e) {}
+  }
+
+  // ---------- 設定 UI ----------
+  function seg(el, items, cur, onPick) {
+    el.innerHTML = items.map(it => '<button data-v="' + it.v + '"' + (String(it.v) === String(cur) ? ' class="on"' : '') + '>' + it.label + '</button>').join('');
+    el.onclick = (e) => { const b = e.target.closest('button'); if (!b || b.disabled) return; onPick(b.dataset.v); };
+  }
+  function renderSettings() {
+    seg($('#segN'), SIZES.map(n => ({ v: n, label: n + '枚' })), st.N, v => { loadSize(Number(v)); saveSettings(); renderSettings(); nextQuestion(); });
+    const items = [{ v: 'all', label: 'すべて' }];
+    for (let s = 0; s <= maxShanten(st.N); s++) items.push({ v: s, label: shantenName(s) });
+    seg($('#segS'), items, st.filterS, v => { st.filterS = v === 'all' ? 'all' : Number(v); saveSettings(); renderSettings(); nextQuestion(); });
+    seg($('#segT'), [{ v: 'new', label: '未出題' }, { v: 'wrong', label: '間違えた問題' }, { v: 'all', label: 'すべて' }], st.target, v => { st.target = v; saveSettings(); renderSettings(); nextQuestion(); });
+    const tl = { new: '未出題', wrong: '間違えた問題', all: 'すべて' }[st.target];
+    $('#settingsSummary').textContent = '設定: ' + st.N + '枚 / ' + (st.filterS === 'all' ? '全向聴' : shantenName(st.filterS)) + ' / ' + tl;
+  }
+
+  // ---------- 出題 ----------
+  function candidates() {
+    const out = [];
+    for (let i = 0; i < st.vals.length; i++) {
+      const s = st.vals[i] >> 9;
+      if (st.filterS !== 'all' && s !== st.filterS) continue;
+      const q = st.status[i];
+      if (st.target === 'new' && q !== 0) continue;
+      if (st.target === 'wrong' && q !== 2) continue;
+      out.push(i);
+    }
+    return out;
+  }
+  function counts() {
+    let seen = 0, ok = 0, ng = 0, inScope = 0;
+    for (let i = 0; i < st.vals.length; i++) {
+      const s = st.vals[i] >> 9;
+      if (st.filterS !== 'all' && s !== st.filterS) continue;
+      inScope++;
+      if (st.status[i] === 1) { seen++; ok++; } else if (st.status[i] === 2) { seen++; ng++; }
+    }
+    return { seen, ok, ng, inScope };
+  }
+  function nextQuestion() {
+    const c = candidates();
+    st.answered = false; st.pickS = null; st.pickMask = 0;
+    $('#resultBox').innerHTML = '';
+    $('#btnNext').classList.add('hidden');
+    if (c.length === 0) {
+      $('#qbody').classList.add('hidden');
+      const e = $('#qempty'); e.classList.remove('hidden');
+      e.innerHTML = st.target === 'new' ? 'この条件の問題はすべて出題済みです。<br>設定で「すべて」か「間違えた問題」を選んでください。'
+        : st.target === 'wrong' ? '間違えた問題はありません。' : '該当する問題がありません。';
+      updateMeta();
+      return;
+    }
+    $('#qbody').classList.remove('hidden'); $('#qempty').classList.add('hidden');
+    st.cur = c[Math.floor(Math.random() * c.length)];
+    renderQuestion();
+  }
+  function updateMeta() {
+    const k = counts();
+    $('#qmeta').textContent = st.N + '枚 / ' + k.inScope.toLocaleString() + ' 問中 ' + k.seen.toLocaleString() + ' 問出題済み（正解 ' + k.ok.toLocaleString() + '）';
+    $('#qprog').style.width = (k.inScope ? k.seen / k.inScope * 100 : 0) + '%';
+  }
+  function renderQuestion() {
+    const hand = st.hands[st.cur];
+    const tiles = B.countsToTiles(hand);
+    const h = $('#hand'); h.className = 'hand n' + st.N; h.innerHTML = tiles.map(tileImg).join('');
+    $('#qno').textContent = 'No.' + (st.cur + 1).toLocaleString();
+    updateMeta();
+    const items = []; for (let s = 0; s <= maxShanten(st.N); s++) items.push({ v: s, label: shantenName(s) });
+    seg($('#ansS'), items, st.pickS, v => { if (st.answered) return; st.pickS = Number(v); renderPick(); });
+    renderTileSel($('#ansT'), hand, st.pickMask, t => { if (st.answered) return; st.pickMask ^= (1 << t); renderPick(); });
+    renderPick();
+  }
+  function renderTileSel(el, hand, mask, onPick, disabled) {
+    el.innerHTML = [0,1,2,3,4,5,6,7,8].map(t => '<button data-t="' + t + '"' + (mask & (1 << t) ? ' class="on"' : '') + (disabled ? ' disabled' : '') + '>' + tileImg(t) + '<span class="c">' + (hand ? '手牌' + hand[t] : '&nbsp;') + '</span></button>').join('');
+    el.onclick = (e) => { const b = e.target.closest('button'); if (!b || b.disabled) return; onPick(Number(b.dataset.t)); };
+  }
+  function renderPick() {
+    $('#ansS').querySelectorAll('button').forEach(b => b.classList.toggle('on', st.pickS !== null && Number(b.dataset.v) === st.pickS));
+    $('#ansT').querySelectorAll('button').forEach(b => b.classList.toggle('on', !!(st.pickMask & (1 << Number(b.dataset.t)))));
+    $('#tileLabel').textContent = st.pickS === null ? '待ち牌／受け入れ牌（複数選択）' : st.pickS === 0 ? '待ち牌（複数選択）' : '向聴数が進む牌＝受け入れ（複数選択）';
+    $('#btnAnswer').disabled = st.answered || st.pickS === null || st.pickMask === 0;
+  }
+
+  // ---------- 採点・解説 ----------
+  function explain(hand, N, s, mask, pickMask, head) {
+    const tiles = maskTiles(mask);
+    let html = '';
+    html += '<p class="answer">' + (head || '正解') + ': <b>' + shantenName(s) + '</b>';
+    if (s === 0) html += '　' + tiles.map(t => (t + 1)).join('・') + '索待ち（' + tiles.length + '面待ち）';
+    else html += '　受け入れ ' + tiles.map(t => (t + 1)).join('・') + '索（' + tiles.length + '種）';
+    html += '</p><ul class="wlist">';
+    for (const t of tiles) {
+      let desc, cls = '';
+      if (s === 0) desc = B.waitShapes(hand, N, t).join('・') || '';
+      else { const h2 = hand.slice(); h2[t]++; desc = '引くと ' + shantenName(B.shanten(h2, N + 1)); }
+      const four = hand[t] >= 4 ? '<span class="tagx">4枚使い切り（純カラ）</span>' : '';
+      if (pickMask !== undefined && !(pickMask & (1 << t))) cls = ' class="miss"';
+      html += '<li' + cls + '>' + tileImg(t) + '<span class="nm">' + tileName(t) + '　' + desc + (pickMask !== undefined && !(pickMask & (1 << t)) ? '　← 選び忘れ' : '') + '</span>' + four + '</li>';
+    }
+    if (pickMask !== undefined) for (const t of maskTiles(pickMask & ~mask)) html += '<li class="extra">' + tileImg(t) + '<span class="nm">' + tileName(t) + '　← ' + (s === 0 ? '待ちではありません' : '進みません') + '</span></li>';
+    html += '</ul>';
+    // 分解
+    const d = B.bestDecomp(hand, N);
+    const label = { kotsu: '面子', shuntsu: '面子', pair: '雀頭', taatsu: '塔子', iso: '孤立' };
+    html += '<details style="margin-top:10px"><summary>手牌の分解を見る</summary><div class="blocks">' +
+      d.blocks.map(b => '<div class="block ' + (b.type === 'kotsu' || b.type === 'shuntsu' ? 'mentsu' : b.type) + '">' + minis(b.tiles) + '<small>' + label[b.type] + '</small></div>').join('') + '</div>';
+    html += '<p class="hint">一般形: 面子 ' + d.mentsu + '・塔子 ' + d.taatsu + '・雀頭 ' + (d.pair ? 'あり' : 'なし') + ' → ' + shantenName(d.shanten);
+    if (N === 13) { const cs = B.chiitoiShanten(hand); html += '　／　七対子: ' + shantenName(cs); }
+    html += '</p></details>';
+    return html;
+  }
+  function answer() {
+    if (st.answered || st.pickS === null || st.pickMask === 0) return;
+    st.answered = true;
+    const v = st.vals[st.cur], s = v >> 9, mask = v & 511;
+    const hand = st.hands[st.cur];
+    const ok = st.pickS === s && st.pickMask === mask;
+    st.status[st.cur] = ok ? 1 : 2; saveStatus();
+    let html = '<div class="result ' + (ok ? 'ok' : 'ng') + '"><h3>' + (ok ? '正解！' : '不正解') + '</h3>';
+    if (!ok) html += '<p class="hint" style="margin:0 0 6px">あなたの回答: ' + shantenName(st.pickS) + '　' + maskTiles(st.pickMask).map(t => t + 1).join('・') + '索</p>';
+    html += explain(hand, st.N, s, mask, st.pickMask) + '</div>';
+    $('#resultBox').innerHTML = html;
+    $('#btnAnswer').disabled = true;
+    $('#btnNext').classList.remove('hidden');
+    $('#ansS').querySelectorAll('button').forEach(b => b.disabled = true);
+    $('#ansT').querySelectorAll('button').forEach(b => b.disabled = true);
+    updateMeta();
+    $('#btnNext').scrollIntoView({ behavior: 'smooth', block: 'end' });
+  }
+  $('#btnAnswer').onclick = answer;
+  $('#btnNext').onclick = nextQuestion;
+
+  // ---------- 成績 ----------
+  function renderStats() {
+    const info = D.sizes[st.N];
+    let ok = 0, ng = 0; for (let i = 0; i < st.status.length; i++) { if (st.status[i] === 1) ok++; else if (st.status[i] === 2) ng++; }
+    const seen = ok + ng;
+    $('#statsTitle').textContent = '成績（' + st.N + '枚・全 ' + info.total.toLocaleString() + ' 問）';
+    $('#statsGrid').innerHTML = '<div class="stat"><b>' + seen.toLocaleString() + '</b><span>出題済み</span></div><div class="stat ok"><b>' + ok.toLocaleString() + '</b><span>正解</span></div><div class="stat ng"><b>' + ng.toLocaleString() + '</b><span>不正解</span></div><div class="stat new"><b>' + (info.total - seen).toLocaleString() + '</b><span>未出題</span></div>';
+    $('#statsProg').style.width = (seen / info.total * 100) + '%';
+    const per = {};
+    for (let i = 0; i < st.vals.length; i++) { const s = st.vals[i] >> 9; per[s] = per[s] || { total: 0, ok: 0, ng: 0 }; per[s].total++; if (st.status[i] === 1) per[s].ok++; else if (st.status[i] === 2) per[s].ng++; }
+    let t = '<tr><th>向聴数</th><th>問題数</th><th>正解</th><th>不正解</th><th>正答率</th></tr>';
+    for (const s of Object.keys(per).sort()) { const p = per[s]; const n = p.ok + p.ng; t += '<tr><td>' + shantenName(Number(s)) + '</td><td>' + p.total.toLocaleString() + '</td><td>' + p.ok.toLocaleString() + '</td><td>' + p.ng.toLocaleString() + '</td><td>' + (n ? Math.round(p.ok / n * 100) + '%' : '-') + '</td></tr>'; }
+    $('#statsTable').innerHTML = t;
+    let a = '<tr><th>枚数</th><th>手牌の数</th><th>テンパイ</th><th>1向聴</th><th>2向聴</th></tr>';
+    for (const N of SIZES) { const z = D.sizes[N].shanten; a += '<tr><td>' + N + '枚</td><td>' + D.sizes[N].total.toLocaleString() + '</td><td>' + (z[0] || 0).toLocaleString() + '</td><td>' + (z[1] || 0).toLocaleString() + '</td><td>' + (z[2] || 0).toLocaleString() + '</td></tr>'; }
+    $('#allTable').innerHTML = a;
+  }
+  $('#btnReset').onclick = () => { if (!confirm(st.N + '枚の成績をすべて消します。よろしいですか？')) return; st.status.fill(0); saveStatus(); renderStats(); nextQuestion(); };
+
+  // ---------- 調べる ----------
+  const calc = { hand: new Array(9).fill(0) };
+  function renderCalc() {
+    const n = calc.hand.reduce((a, b) => a + b, 0);
+    renderTileSel($('#calcSel'), calc.hand, 0, t => { if (calc.hand[t] < 4 && n < 14) { calc.hand[t]++; renderCalc(); } });
+    const h = $('#calcHand'); h.className = 'hand n' + (n >= 11 ? 13 : n >= 8 ? 10 : 7);
+    const tiles = B.countsToTiles(calc.hand);
+    h.innerHTML = tiles.map(t => tileImg(t).replace('<span class="tw">', '<span class="tw" data-i="' + t + '">')).join('');
+    h.onclick = (e) => { const s = e.target.closest('span[data-i]'); if (!s) return; calc.hand[Number(s.dataset.i)]--; renderCalc(); };
+    const out = $('#calcOut');
+    if (n === 0) { out.innerHTML = '<p class="hint">牌をタップして手牌を作ってください（1〜14枚）。</p>'; return; }
+    if (n % 3 === 0) { out.innerHTML = '<p class="hint">' + n + '枚です。3n+1 枚（4・7・10・13）か 3n+2 枚（14）にしてください。</p>'; return; }
+    const s = B.shanten(calc.hand, n);
+    let html = '';
+    if (s === -1) {
+      html += '<p class="answer">' + n + '枚: <b>和了形</b></p>';
+      const d = B.agariDecomps(calc.hand, B.mentsuTarget(n));
+      html += '<div class="blocks">' + d.map(dec => '<div class="block mentsu">' + dec.map(b => minis(b.type === 'pair' ? [b.start, b.start] : b.type === 'kotsu' ? [b.start, b.start, b.start] : [b.start, b.start + 1, b.start + 2])).join(' ') + '</div>').join('') + '</div>';
+      if (n === 14 && B.chiitoiShanten(calc.hand) === -1) html += '<p class="hint">七対子でも和了形です。</p>';
+    } else if (n % 3 === 1) {
+      const mask = B.advanceMask(calc.hand, n);
+      html += explain(calc.hand, n, s, mask, undefined, n + '枚');
+    } else {
+      html += '<p class="answer">' + n + '枚: <b>' + shantenName(s) + '</b></p><p class="hint">14枚の形です。1枚切った後の向聴数を調べるには牌をタップして外してください。</p>';
+    }
+    out.innerHTML = html;
+  }
+  $('#calcClear').onclick = () => { calc.hand.fill(0); renderCalc(); };
+  $('#calcRandom').onclick = () => { calc.hand.fill(0); const pool = []; for (let t = 0; t < 9; t++) for (let k = 0; k < 4; k++) pool.push(t); for (let i = 0; i < 13; i++) { const j = i + Math.floor(Math.random() * (pool.length - i)); [pool[i], pool[j]] = [pool[j], pool[i]]; calc.hand[pool[i]]++; } renderCalc(); };
+
+  // ---------- タブ ----------
+  document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => {
+    document.querySelectorAll('.tabs button').forEach(x => x.classList.toggle('on', x === b));
+    for (const t of ['quiz', 'stats', 'calc']) $('#tab-' + t).classList.toggle('hidden', t !== b.dataset.tab);
+    if (b.dataset.tab === 'stats') renderStats();
+    if (b.dataset.tab === 'calc') renderCalc();
+  });
+
+  // ---------- 起動 ----------
+  $('#verinfo').textContent = 'データ生成日 ' + D.generated + ' / 全 ' + SIZES.map(n => n + '枚 ' + D.sizes[n].total.toLocaleString() + '通り').join('・');
+  loadSize(st.N);
+  renderSettings();
+  nextQuestion();
+})();
+</script>
+</body>
+</html>
